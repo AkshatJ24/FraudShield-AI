@@ -1,0 +1,34 @@
+# Core ML & Data
+numpy
+pandas
+scikit-learn
+xgboost
+lightgbm
+shap
+matplotlib
+seaborn
+plotly
+networkx
+optuna
+pyarrow
+
+# Notebooks
+jupyter
+ipykernel
+
+# FastAPI & Backend
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+sqlalchemy
+asyncpg
+psycopg2-binary
+alembic
+httpx
+python-multipart
+python-jose[cryptography]
+
+# Testing
+pytest
+pytest-asyncio
