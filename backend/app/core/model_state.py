@@ -1,6 +1,6 @@
 """Model + artefact loader — called ONCE at FastAPI startup.
 
-Everything expensive (LightGBM model, SHAP explainer, CardHistoryStore warm-up)
+Everything expensive (LightGBM model, encoders, reason map)
 happens here so that individual requests pay zero startup cost.
 """
 from __future__ import annotations
@@ -15,7 +15,6 @@ from typing import Any
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
-import shap
 
 from app.core.config import settings
 from app.features import CardHistoryStore, FeatureEncoders
@@ -105,7 +104,6 @@ class ModelState:
 
     def __init__(self):
         self.booster: lgb.Booster | None = None
-        self.explainer: shap.TreeExplainer | None = None
         self.calibrator: _SigmoidCalibrator | None = None
         self.encoders: FeatureEncoders | None = None
         self.feature_order: list[str] | None = None
@@ -134,8 +132,8 @@ class ModelState:
         logger.info("Booster loaded: %d trees, %d features",
                     self.booster.num_trees(), len(self.feature_order))
 
-        # 3. SHAP TreeExplainer (fast, exact for tree ensembles)
-        self.explainer = shap.TreeExplainer(self.booster)
+        # 3. SHAP values come from LightGBM's own TreeSHAP (predict(pred_contrib=True)):
+        #    identical to shap.TreeExplainer, without the shap / numba / scipy dependencies.
 
         # 4. Calibrator
         self.calibrator = _SigmoidCalibrator.from_json(settings.CALIBRATOR_PATH)
@@ -169,13 +167,14 @@ class ModelState:
         return raw, prob
 
     def shap_values(self, feature_row: np.ndarray) -> np.ndarray:
-        """Return SHAP values (log-odds, without bias) for a single row."""
+        """Return SHAP values (log-odds, without bias) for a single row.
+
+        LightGBM's built-in TreeSHAP; matches shap.TreeExplainer exactly. The last column of
+        pred_contrib is the expected value (bias), which callers don't use.
+        """
         assert self._loaded
-        sv = self.explainer.shap_values(feature_row.reshape(1, -1))
-        # shap_values may return ndarray or list (multiclass) — always take [0]
-        if isinstance(sv, list):
-            sv = sv[1] if len(sv) > 1 else sv[0]
-        return sv[0]   # shape (n_features,)
+        contrib = self.booster.predict(feature_row.reshape(1, -1), pred_contrib=True)
+        return contrib[0, :-1]
 
     def align_feature_row(self, feature_df: pd.DataFrame) -> np.ndarray:
         """Re-order / fill-missing columns to match the trained feature order."""

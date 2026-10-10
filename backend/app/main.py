@@ -3,7 +3,7 @@
 Startup sequence
 ----------------
 1. `lifespan` context manager fires → `model_state.load()` is called ONCE.
-   This loads the LightGBM booster, SHAP explainer, calibrator, encoders,
+   This loads the LightGBM booster, calibrator, encoders,
    thresholds, reason map, and initialises the in-memory card history store.
 2. Routers are registered under the versioned prefix (/api/v1).
 3. CORS is enabled for local development (all origins); tighten for production.

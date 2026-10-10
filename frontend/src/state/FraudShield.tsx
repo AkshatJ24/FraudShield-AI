@@ -15,6 +15,8 @@ interface FraudShieldState {
   start: () => void;
   bootStep: number;
   bootDetails: string[];
+  /** Progress note for the current step (e.g. while the API wakes up). */
+  bootNote: string | null;
   bootError: BootError | null;
   retryBoot: () => void;
   txs: Tx[];
@@ -56,6 +58,7 @@ export function FraudShieldProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<Phase>('start');
   const [bootStep, setBootStep] = useState(0);
   const [bootDetails, setBootDetails] = useState<string[]>([]);
+  const [bootNote, setBootNote] = useState<string | null>(null);
   const [bootError, setBootError] = useState<BootError | null>(null);
   const [txs, setTxs] = useState<Tx[]>([]);
   const [t0, setT0] = useState(() => Date.now());
@@ -83,7 +86,7 @@ export function FraudShieldProvider({ children }: { children: ReactNode }) {
     setBootStep(0);
     setBootDetails([]);
     const steps: (() => Promise<string>)[] = [
-      source.checkApi,
+      () => source.checkApi(setBootNote),
       source.checkModel,
       source.checkDb,
       async () => {
@@ -101,8 +104,10 @@ export function FraudShieldProvider({ children }: { children: ReactNode }) {
           n[i] = detail;
           return n;
         });
+        setBootNote(null);
         setBootStep(i + 1);
       } catch (e) {
+        setBootNote(null);
         setBootError({ step: i, message: errorMessage(e) });
         return;
       }
@@ -189,6 +194,7 @@ export function FraudShieldProvider({ children }: { children: ReactNode }) {
     start,
     bootStep,
     bootDetails,
+    bootNote,
     bootError,
     retryBoot: () => void runBoot(),
     txs,

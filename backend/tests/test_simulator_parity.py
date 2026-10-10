@@ -13,7 +13,7 @@ import pytest
 from app.core.config import _REPO_ROOT
 
 _PREDICTIONS = _REPO_ROOT / "data" / "processed" / "holdout_predictions.parquet"
-_REPLAY = [_REPO_ROOT / "data" / "replay" / "holdout.parquet", _REPO_ROOT / "data" / "replay" / "train_val_store.parquet"]
+_REPLAY = [_REPO_ROOT / "data" / "replay" / "holdout.parquet", _REPO_ROOT / "data" / "replay" / "card_store.pkl"]
 _SOURCES = [
     _REPO_ROOT / "data" / "processed" / "features.parquet",
     _REPO_ROOT / "data" / "raw" / "train_transaction.csv",
@@ -30,7 +30,6 @@ def test_simulator_matches_offline_holdout_scores():
 
     from app.api import simulator as sim
     from app.core.model_state import ModelState
-    from app.features.build import STORE_INPUT_COLS
     from app.services.scoring import score_transaction
 
     state = ModelState()
@@ -39,15 +38,17 @@ def test_simulator_matches_offline_holdout_scores():
     state.card_store = store
     offline = pd.read_parquet(_PREDICTIONS).set_index("TransactionID")
 
-    assert abs(data.holdout.loc[data.demo_idx, "isFraud"].mean() - 0.05) < 0.002
+    fraud = [data.is_fraud(int(j)) for j in data.demo_idx[:2000]]
+    assert abs(sum(fraud) / len(fraud) - 0.05) < 0.02
 
     cursor = 0
     for pos in range(N_ROWS):
         j = int(data.demo_idx[pos])
-        for k in range(cursor, j):
-            store.process({c: data.store_inputs[c][k] for c in STORE_INPUT_COLS}, update=True)
+        data.feed_store(store, cursor, j)
         cursor = j + 1
-        resp = score_transaction(sim._request_from_row(data, j), state)
-        expected = offline.loc[data.holdout.at[j, "TransactionID"]]
+        req = data.request(j)
+        resp = score_transaction(req, state)
+        i = data._locate(j)
+        expected = offline.loc[int(data._frame.at[i, "TransactionID"])]
         assert resp.raw_score == pytest.approx(expected["raw_score"], rel=1e-6, abs=1e-9)
         assert resp.calibrated_prob == pytest.approx(expected["calibrated_prob"], rel=1e-6, abs=1e-9)

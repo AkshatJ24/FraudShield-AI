@@ -4,15 +4,16 @@ import type { DbHealth, Health, Metrics, SimStatus } from './types';
 const root = (path: string) => config.apiBase + path;
 const v1 = (path: string) => root(config.apiPrefix + path);
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...init?.headers } });
+async function request<T>(url: string, init?: RequestInit, timeoutMs?: number): Promise<T> {
+  const signal = timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined;
+  const res = await fetch(url, { signal, ...init, headers: { 'Content-Type': 'application/json', ...init?.headers } });
   if (!res.ok) throw new Error(`${init?.method ?? 'GET'} ${url.replace(config.apiBase, '')} returned ${res.status}`);
   return res.json() as Promise<T>;
 }
 
 export const api = {
   /** GET /health (unversioned) */
-  health: () => request<Health>(root('/health')),
+  health: (timeoutMs?: number) => request<Health>(root('/health'), undefined, timeoutMs),
   /** GET /health/db — SELECT 1 against PostgreSQL; 503 when it's unreachable. */
   dbHealth: () => request<DbHealth>(root('/health/db')),
   metrics: () => request<Metrics>(v1('/metrics')),

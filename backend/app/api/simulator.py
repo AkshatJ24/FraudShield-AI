@@ -8,20 +8,25 @@ Fidelity to the offline evaluation
   and amounts as float32, so the raw strings and float64 amounts are joined back from
   data/raw/train_*.csv.
 * The card history store is warmed with ``features.build.replay`` over train + validation,
-  the exact function training used.
+  the exact function training used, then pruned to the cards the holdout touches (the replay
+  never reads any other card), so the deployable snapshot is small.
 * The demo scores a downsampled set (~5% fraud), but every holdout transaction still passes
   through the card history store in time order, so velocity / novelty features match the
   offline holdout features row for row.
+
+Memory: the holdout is read from parquet one row group at a time, and the card store is a
+pickled snapshot of only the cards the replay uses, so the API fits in ~512 MB.
 """
 import asyncio
 import logging
+import pickle
 import random
 import time
-from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 from fastapi import APIRouter
 
 from app.api.stream import broadcaster, notify_new_transaction
@@ -30,6 +35,7 @@ from app.core.model_state import model_state
 from app.db.crud import save_transaction_task
 from app.features import CardHistoryStore, replay
 from app.features.build import STORE_INPUT_COLS, _py_list
+from app.features.keys import CARD_COLS, make_keys, norm_d1
 from app.schemas.score import ANONYMISED_FIELDS, ScoreRequest
 from app.services.scoring import score_transaction
 
@@ -48,22 +54,63 @@ _DEMO_FRAUD_SHARE = 0.05
 _ANONYMISED = set(ANONYMISED_FIELDS)
 
 
-@dataclass
-class ReplayData:
-    holdout: pd.DataFrame          # every holdout row, sorted like training's replay
-    demo_idx: np.ndarray           # positions in `holdout` that are scored and streamed
-    store_inputs: dict             # STORE_INPUT_COLS → plain-Python lists, for silent store updates
-    train_val: pd.DataFrame        # store inputs for train + validation, to rebuild the store on reset
-    request_cols: list             # ScoreRequest fields present in `holdout`
+class HoldoutReader:
+    """Holdout rows from data/replay/holdout.parquet, one row group in memory at a time."""
+
+    def __init__(self, path):
+        self._file = pq.ParquetFile(path)
+        meta = self._file.metadata
+        self.n_rows = meta.num_rows
+        self._starts = np.cumsum([0] + [meta.row_group(g).num_rows for g in range(meta.num_row_groups)])
+        self.demo_idx = np.flatnonzero(self._file.read(columns=["demo"]).column("demo").to_numpy())
+        names = set(self._file.schema_arrow.names)
+        self.request_cols = [c for c in ScoreRequest.model_fields if c in names and c not in _NOT_FROM_ROW]
+        self._g = -1
+        self._frame: Optional[pd.DataFrame] = None
+        self._store_inputs: dict = {}
+
+    def _locate(self, k: int) -> int:
+        g = int(np.searchsorted(self._starts, k, side="right")) - 1
+        if g != self._g:
+            self._frame = self._file.read_row_group(g).to_pandas()
+            self._store_inputs = {
+                c: _py_list(self._frame[c]) if c in self._frame else [None] * len(self._frame)
+                for c in STORE_INPUT_COLS
+            }
+            self._g = g
+        return k - int(self._starts[g])
+
+    def store_input(self, k: int) -> dict:
+        i = self._locate(k)
+        return {c: self._store_inputs[c][i] for c in STORE_INPUT_COLS}
+
+    def is_fraud(self, k: int) -> bool:
+        i = self._locate(k)  # loads the row group before _frame is read
+        return bool(self._frame.at[i, "isFraud"])
+
+    def request(self, k: int) -> ScoreRequest:
+        """The ScoreRequest a client holding the full row would send (isFraud stays out)."""
+        i = self._locate(k)
+        row = self._frame.iloc[i]
+        req_data = {c: row[c] for c in self.request_cols if pd.notna(row[c])}
+        if "has_identity" in req_data:
+            req_data["has_identity"] = bool(req_data["has_identity"])
+        req_data["what_if"] = False
+        return ScoreRequest(**req_data)
+
+    def feed_store(self, store: CardHistoryStore, start: int, stop: int) -> None:
+        """Rows the demo skips still go into card history, in time order."""
+        for k in range(start, stop):
+            store.process(self.store_input(k), update=True)
 
 
 class SimulatorState:
     is_running: bool = False
     task: Optional[asyncio.Task] = None
     # Loaded once and reused across start / stop, so Resume continues where Pause left off.
-    data: Optional[ReplayData] = None
+    data: Optional[HoldoutReader] = None
     load_task: Optional[asyncio.Task] = None
-    # Set by /reset: the store already holds replayed holdout history and must be rebuilt.
+    # Set by /reset: the store already holds replayed holdout history and must be reloaded.
     needs_rewarm: bool = False
     warm_task: Optional[asyncio.Task] = None
     # Demo rows scored so far, and the next holdout row the card store hasn't seen.
@@ -102,11 +149,28 @@ def warm_store(train_val: pd.DataFrame) -> CardHistoryStore:
     return store
 
 
+def prune_store(store: CardHistoryStore, holdout: pd.DataFrame) -> CardHistoryStore:
+    """Keep only the card identities the holdout replay looks up. Features for holdout rows are
+    unchanged; a POST /score for any other train-period card would see no history."""
+    cols = {c: _py_list(holdout[c]) if c in holdout else [None] * len(holdout) for c in CARD_COLS + ["TransactionDT", "D1"]}
+    keys_a, keys_b = set(), set()
+    for i in range(len(holdout)):
+        key_a, key_b = make_keys([cols[c][i] for c in CARD_COLS], int(cols["TransactionDT"][i]) // 86_400, norm_d1(cols["D1"][i]))
+        keys_a.add(key_a)
+        keys_b.add(key_b)
+    before = len(store)
+    store._a = {k: v for k, v in store._a.items() if k in keys_a}
+    store._b = {k: v for k, v in store._b.items() if k in keys_b}
+    logger.info("Card store pruned to the holdout's cards: %d -> %d identities.", before, len(store))
+    return store
+
+
 # Compact replay set for deployment (see `python -m app.api.simulator --export`): everything
 # the simulator needs, without the 800 MB of raw CSVs and the full feature parquet.
 REPLAY_DIR = _REPO_ROOT / "data" / "replay"
 REPLAY_HOLDOUT = REPLAY_DIR / "holdout.parquet"
-REPLAY_TRAIN_VAL = REPLAY_DIR / "train_val_store.parquet"
+REPLAY_STORE = REPLAY_DIR / "card_store.pkl"
+_ROW_GROUP = 2048
 
 
 def build_replay_frames() -> tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
@@ -142,36 +206,41 @@ def build_replay_frames() -> tuple[Optional[pd.DataFrame], Optional[pd.DataFrame
     return holdout, train_val
 
 
-def export_replay_files() -> None:
+def export_replay_files() -> bool:
+    """Write data/replay/holdout.parquet and card_store.pkl from features.parquet + data/raw."""
     holdout, train_val = build_replay_frames()
     if holdout is None:
-        raise SystemExit("Could not build the replay set (see log).")
+        return False
+    store = prune_store(warm_store(train_val), holdout)
     REPLAY_DIR.mkdir(parents=True, exist_ok=True)
-    holdout.to_parquet(REPLAY_HOLDOUT, index=False, compression="zstd")
-    train_val.to_parquet(REPLAY_TRAIN_VAL, index=False, compression="zstd")
-    for p in (REPLAY_HOLDOUT, REPLAY_TRAIN_VAL):
-        logger.info("Wrote %s (%.1f MB)", p, p.stat().st_size / 1e6)
+    holdout.to_parquet(REPLAY_HOLDOUT, index=False, compression="zstd", row_group_size=_ROW_GROUP)
+    with open(REPLAY_STORE, "wb") as f:
+        pickle.dump(store, f, protocol=pickle.HIGHEST_PROTOCOL)
+    for path in (REPLAY_HOLDOUT, REPLAY_STORE):
+        logger.info("Wrote %s (%.1f MB)", path, path.stat().st_size / 1e6)
+    return True
 
 
-def load_replay_data() -> tuple[Optional[ReplayData], Optional[CardHistoryStore]]:
-    if REPLAY_HOLDOUT.exists() and REPLAY_TRAIN_VAL.exists():
-        holdout = pd.read_parquet(REPLAY_HOLDOUT)
-        train_val = pd.read_parquet(REPLAY_TRAIN_VAL)
-    else:
-        holdout, train_val = build_replay_frames()
-        if holdout is None:
+def load_card_store() -> CardHistoryStore:
+    # Our own file, written by export_replay_files (not user input).
+    with open(REPLAY_STORE, "rb") as f:
+        return pickle.load(f)
+
+
+def load_replay_data() -> tuple[Optional[HoldoutReader], Optional[CardHistoryStore]]:
+    if not (REPLAY_HOLDOUT.exists() and REPLAY_STORE.exists()):
+        logger.info("No replay set in %s; building it from features.parquet + data/raw.", REPLAY_DIR)
+        if not export_replay_files():
             return None, None
-
-    store = warm_store(train_val)
-    demo_idx = np.flatnonzero(holdout["demo"].to_numpy())
-    request_cols = [c for c in ScoreRequest.model_fields if c in holdout.columns and c not in _NOT_FROM_ROW]
-    store_inputs = {c: _py_list(holdout[c]) if c in holdout else [None] * len(holdout) for c in STORE_INPUT_COLS}
-    logger.info("Replay set: %d holdout rows, %d scored (%d request fields each).", len(holdout), len(demo_idx), len(request_cols))
-    return ReplayData(holdout, demo_idx, store_inputs, train_val, request_cols), store
+    reader = HoldoutReader(REPLAY_HOLDOUT)
+    store = load_card_store()
+    logger.info("Replay set: %d holdout rows, %d scored (%d request fields each); %d card identities.",
+                reader.n_rows, len(reader.demo_idx), len(reader.request_cols), len(store))
+    return reader, store
 
 
-async def ensure_replay_ready() -> Optional[ReplayData]:
-    """Load once, and rebuild the card store after a reset. Both run in a worker thread
+async def ensure_replay_ready() -> Optional[HoldoutReader]:
+    """Load once, and reload the card store after a reset. Both run in a worker thread
     that can't be cancelled, so the task is shared: a quick stop → start waits on the
     same work instead of starting it twice."""
     if sim_state.data is None:
@@ -192,23 +261,13 @@ async def ensure_replay_ready() -> Optional[ReplayData]:
 
     if sim_state.needs_rewarm:
         if sim_state.warm_task is None:
-            sim_state.warm_task = asyncio.create_task(asyncio.to_thread(warm_store, sim_state.data.train_val))
+            sim_state.warm_task = asyncio.create_task(asyncio.to_thread(load_card_store))
         store = await asyncio.shield(sim_state.warm_task)
         sim_state.warm_task = None
         if sim_state.needs_rewarm:
             model_state.card_store = store
             sim_state.needs_rewarm = False
     return sim_state.data
-
-
-def _request_from_row(data: ReplayData, i: int) -> ScoreRequest:
-    """Build the ScoreRequest a client holding the full row would send (isFraud stays out)."""
-    row = data.holdout.iloc[i]
-    req_data = {c: row[c] for c in data.request_cols if pd.notna(row[c])}
-    if "has_identity" in req_data:
-        req_data["has_identity"] = bool(req_data["has_identity"])
-    req_data["what_if"] = False
-    return ScoreRequest(**req_data)
 
 
 async def simulator_loop():
@@ -240,16 +299,13 @@ async def simulator_loop():
 
         target = int(data.demo_idx[sim_state.position])
 
-        # Rows the demo skips still go into card history, in time order.
-        store = model_state.card_store
-        for k in range(sim_state.cursor, target):
-            store.process({c: data.store_inputs[c][k] for c in STORE_INPUT_COLS}, update=True)
+        data.feed_store(model_state.card_store, sim_state.cursor, target)
         sim_state.cursor = target + 1
         sim_state.position += 1
 
-        true_label = bool(data.holdout.at[target, "isFraud"])
+        true_label = data.is_fraud(target)
         try:
-            req = _request_from_row(data, target)
+            req = data.request(target)
             # Score locally (also adds the row to card history)
             resp = score_transaction(req, model_state)
 
@@ -331,7 +387,7 @@ async def stop_simulator():
 
 @router.post("/reset")
 async def reset_simulator():
-    """Rewind to the first row and rebuild the card history from train + validation,
+    """Rewind to the first row and reload the card-history snapshot,
     so re-scored rows don't see their own (already replayed) history. Keeps running or
     paused as it was; while running, the rebuild happens before the next event."""
     was_running = sim_state.is_running
@@ -347,7 +403,8 @@ if __name__ == "__main__":
     import argparse
 
     ap = argparse.ArgumentParser(description="Holdout replay utilities.")
-    ap.add_argument("--export", action="store_true", help=f"write {REPLAY_HOLDOUT.name} and {REPLAY_TRAIN_VAL.name} to data/replay/")
+    ap.add_argument("--export", action="store_true", help=f"write {REPLAY_HOLDOUT.name} and {REPLAY_STORE.name} to data/replay/")
     if ap.parse_args().export:
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
-        export_replay_files()
+        if not export_replay_files():
+            raise SystemExit("Could not build the replay set (see log).")

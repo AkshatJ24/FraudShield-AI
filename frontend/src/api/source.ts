@@ -7,7 +7,8 @@ export type StreamStatus = 'open' | 'reconnecting';
 
 /** Everything the startup pipeline and stream controls need. Live and mock implement the same shape. */
 export interface DataSource {
-  checkApi(): Promise<string>;
+  /** `onWait` reports progress while a sleeping server wakes up. */
+  checkApi(onWait?: (note: string) => void): Promise<string>;
   checkModel(): Promise<string>;
   checkDb(): Promise<string>;
   /** Resolves once the stream is open; returns a close function. */
@@ -21,11 +22,28 @@ export interface DataSource {
   metrics(): Promise<Metrics>;
 }
 
+/** Free hosts put the API to sleep when idle; waking it and loading the model can take a few minutes. */
+const WAKE_TIMEOUT_MS = 180_000;
+const WAKE_RETRY_MS = 5_000;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 function createLiveSource(): DataSource {
   let health: Health | null = null;
   return {
-    async checkApi() {
-      health = await api.health();
+    async checkApi(onWait) {
+      const t0 = Date.now();
+      for (;;) {
+        try {
+          health = await api.health(20_000);
+          break;
+        } catch (e) {
+          // Not reachable yet, a proxy's error page, or a timeout: keep trying until the deadline.
+          const waited = Date.now() - t0;
+          if (waited + WAKE_RETRY_MS > WAKE_TIMEOUT_MS) throw e;
+          onWait?.(`The server is waking up. This can take a minute or two (${Math.round(waited / 1000)} s)…`);
+          await sleep(WAKE_RETRY_MS);
+        }
+      }
       if (health.status === 'down') throw new Error('GET /health reports status "down"');
       return 'GET /health · ok';
     },

@@ -44,10 +44,12 @@ Simulator controls:
 | --- | --- |
 | `POST /simulate/start` | Starts, or **resumes where the last stop left off** |
 | `POST /simulate/stop` | Pauses; the replay position is kept |
-| `POST /simulate/reset` | Rewinds to the first row and rebuilds the card history (the ↺ button in the sidebar card) |
+| `POST /simulate/reset` | Rewinds to the first row and reloads the card history (the ↺ button in the sidebar card) |
 | `GET /simulate/status` | `{running, position, total, warmed_up, loading}`, polled every 4 s for the progress bar |
 
-The first start loads the replay set and warms the per-card cache from train/validation (about 30 s). Both stay cached for the life of the API process, so later starts are immediate. A rewind rebuilds the cache (about 15 s), so re-scored rows don't see their own history. The Overview shows "Waiting for the first transaction…" until the first event arrives.
+The first start loads the replay set (`data/replay/`) and its card-history snapshot (a few seconds). Both stay cached for the life of the API process. A rewind reloads the snapshot, so re-scored rows don't see their own history. The Overview shows "Waiting for the first transaction…" until the first event arrives.
+
+On a free host that sleeps when idle, the FastAPI step keeps retrying `GET /health` for up to 3 minutes and shows a "waking up" note before giving up.
 
 ## Metrics page
 

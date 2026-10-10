@@ -13,9 +13,11 @@ A full ML system on the IEEE-CIS dataset: leakage-safe feature engineering, a ca
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 
-**[Live demo](https://YOUR-LIVE-DEMO-LINK)** · [API docs](https://YOUR-API-LINK/docs) · [How it works](#how-it-works) · [Results](#results)
+**[Demo video](https://YOUR-DEMO-VIDEO-LINK)** · [Live demo](https://YOUR-LIVE-DEMO-LINK) · [API docs](https://YOUR-API-LINK/docs) · [How it works](#how-it-works) · [Results](#results)
 
-<!-- Replace the two links above once the project is deployed. -->
+<sub>The live demo runs on a free tier that sleeps when idle: the first visit takes a minute or two to wake the server, and scoring is slower than on a full CPU. The video shows the full experience.</sub>
+
+<!-- Replace the three links above once the video is uploaded and the project is deployed. -->
 
 ![FraudShield dashboard](docs/screenshots/overview.png)
 
@@ -127,7 +129,7 @@ A cost model prices each outcome: missed fraud costs the amount plus a $15 charg
 
 ### 5. Explanations
 
-SHAP `TreeExplainer` runs per request. A reason map turns the top contributors into readable text, for example *"3 earlier transaction(s) on this card in the last 10 minutes"* or *"Card was dormant for 31 days before this transaction"*. At most one reason comes from an anonymised feature, and there is a fallback when no contributor clears the threshold.
+SHAP values are computed per request with LightGBM's built-in TreeSHAP (`pred_contrib`, identical to `shap.TreeExplainer`). A reason map turns the top contributors into readable text, for example *"3 earlier transaction(s) on this card in the last 10 minutes"* or *"Card was dormant for 31 days before this transaction"*. At most one reason comes from an anonymised feature, and there is a fallback when no contributor clears the threshold.
 
 ### 6. Serving
 
@@ -260,10 +262,19 @@ The 36 tests cover feature leakage and training/serving parity, schema validatio
 | Part | Platform | Notes |
 |---|---|---|
 | Dashboard | **Vercel** | Root directory `frontend`, env `VITE_API_URL` = the API URL |
-| API | **Hugging Face Spaces** (Docker) | `deploy/huggingface/`: the Space builds straight from this repo |
+| API | **SnapDeploy** (Docker, from GitHub) | Builds the root `Dockerfile`; port `7860`; secret `DATABASE_URL` |
 | Database | **Neon** (serverless Postgres) | Paste the connection string as the `DATABASE_URL` secret, as-is |
 
-The API image (`Dockerfile` at the repo root, or the Space variant) holds the model artifacts and a compact 18 MB replay set (`data/replay/`, built with `python -m app.api.simulator --export`) instead of the 800 MB of raw CSVs. It runs migrations on start. The simulator pauses itself after 5 minutes with no dashboard connected (`SIMULATOR_IDLE_PAUSE_S`).
+The API image holds the model artifacts and a 20 MB replay set (`data/replay/`, built with `python -m app.api.simulator --export`) instead of the 800 MB of raw CSVs and the full feature table. The replay set has the holdout rows, read one chunk at a time, and a snapshot of card history for just the cards the holdout uses. Scores are unchanged, and a test checks they still match the offline holdout exactly.
+
+The image runs in **about 300–400 MB of RAM** on a 512 MB / 0.25 vCPU free tier:
+
+| | Full CPU | 0.25 vCPU |
+|---|---|---|
+| Startup (model load + migrations) | ~10 s | ~20 s |
+| Scoring one transaction | ~0.45 s | ~1.7 s |
+
+It runs migrations on start. The simulator pauses itself after 5 minutes with no dashboard connected (`SIMULATOR_IDLE_PAUSE_S`). The dashboard keeps retrying for up to 3 minutes while a sleeping server wakes up.
 
 ## Project structure
 
@@ -283,9 +294,8 @@ The API image (`Dockerfile` at the repo root, or the Space variant) holds the mo
 │   ├── notebooks/        # 01 EDA · 02 features · 03 modeling · 04 thresholds & explainability
 │   ├── training/         # train, evaluate, tune_thresholds, reasons
 │   └── artifacts/        # model, calibrator, encoders, thresholds, reason map, curves
-├── deploy/huggingface/   # Hugging Face Space (Dockerfile + Space card)
 ├── docs/                 # EDA / model / threshold figures, screenshots
-├── data/                 # raw + processed (gitignored); replay/ = compact deployable replay set
+├── data/                 # raw + processed (gitignored); replay/ = deployable replay set
 ├── Dockerfile            # API image
 └── docker-compose.yml    # PostgreSQL
 ```

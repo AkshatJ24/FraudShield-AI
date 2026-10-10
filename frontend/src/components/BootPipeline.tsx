@@ -24,7 +24,7 @@ const NODE_STYLE = {
 };
 
 export function BootPipeline() {
-  const { bootStep, bootDetails, bootError, retryBoot } = useFraudShield();
+  const { bootStep, bootDetails, bootNote, bootError, retryBoot } = useFraudShield();
   const stateOf = (i: number) => (bootError?.step === i ? 'error' : bootStep > i ? 'done' : bootStep === i && !bootError ? 'active' : 'idle');
   const detailOf = (i: number, s: keyof typeof NODE_STYLE) => (s === 'done' ? bootDetails[i] : s === 'active' ? 'connecting…' : s === 'error' ? 'failed' : 'waiting');
 
@@ -33,7 +33,7 @@ export function BootPipeline() {
       <div className="fs-card flex w-full max-w-[860px] animate-fade-up-late flex-col gap-[34px] rounded-[28px] px-12 py-11">
         <div className="flex flex-col gap-1.5">
           <h2 className="text-[26px] font-bold tracking-[-.02em]">{bootError ? 'Startup stopped' : 'Connecting to FraudShield'}</h2>
-          <p className="text-base text-muted2">{bootError ? bootError.message : MESSAGES[Math.min(4, bootStep)]}</p>
+          <p className="text-base text-muted2" aria-live="polite">{bootError ? bootError.message : bootNote ?? MESSAGES[Math.min(4, bootStep)]}</p>
         </div>
 
         <div className="flex items-start">
