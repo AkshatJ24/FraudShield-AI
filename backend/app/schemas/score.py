@@ -2,7 +2,9 @@
 
 Design notes
 ------------
-* Request fields mirror the IEEE-CIS dataset columns that analysts understand.
+* Request fields mirror the IEEE-CIS dataset columns that analysts understand, plus the
+  anonymised numeric columns (C1-C14, D2-D15, V1-V339, id_01-id_11) the model was trained
+  on, so a caller holding the full row (e.g. the simulator) gets the same score as offline.
 * Every field is Optional so the manual "Try a Transaction" form can omit columns.
   Missing fields get model-friendly defaults (None → NaN in the feature builder).
 * The response carries only what is needed for the dashboard: score (0-100),
@@ -12,14 +14,18 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, create_model, model_validator
 
 
 # ---------------------------------------------------------------------------
 # Request
 # ---------------------------------------------------------------------------
 
-class ScoreRequest(BaseModel):
+# Fields that only exist when the identity table has a row for the transaction.
+IDENTITY_FIELDS = [f"id_{i:02d}" for i in range(1, 12)] + ["id_30", "id_31", "id_33", "DeviceType", "DeviceInfo"]
+
+
+class _ScoreRequestCore(BaseModel):
     """Input for POST /score.  All fields are optional to support partial input."""
 
     # ── identifiers (not used as model features, forwarded to the response) ─
@@ -115,6 +121,14 @@ class ScoreRequest(BaseModel):
     id_31: Optional[str] = Field(default=None, description="Browser")
     id_33: Optional[str] = Field(default=None, description="Screen resolution")
 
+    has_identity: Optional[bool] = Field(
+        default=None,
+        description=(
+            "Whether the identity table has a row for this transaction. "
+            "Derived from the id_* / Device* fields when omitted."
+        ),
+    )
+
     # ── what-if flag ─────────────────────────────────────────────────────────
     what_if: bool = Field(
         default=False,
@@ -133,6 +147,8 @@ class ScoreRequest(BaseModel):
         if isinstance(data, dict):
             if data.get("TransactionDT") is None:
                 data["TransactionDT"] = int(_time.time())
+            if data.get("has_identity") is None:
+                data["has_identity"] = any(data.get(k) is not None for k in IDENTITY_FIELDS)
         return data
 
     model_config = {"json_schema_extra": {
@@ -146,6 +162,23 @@ class ScoreRequest(BaseModel):
             "DeviceType": "mobile",
         }]
     }}
+
+
+# Anonymised numeric columns, generated rather than written out (339 V columns alone).
+# Each is an optional float, like the named card / address fields above.
+ANONYMISED_FIELDS = (
+    [f"C{i}" for i in range(1, 15)]
+    + [f"D{i}" for i in range(2, 16)]
+    + [f"V{i}" for i in range(1, 340)]
+    + [f"id_{i:02d}" for i in range(1, 12)]
+)
+
+ScoreRequest = create_model(
+    "ScoreRequest",
+    __base__=_ScoreRequestCore,
+    __doc__=_ScoreRequestCore.__doc__,
+    **{name: (Optional[float], Field(default=None)) for name in ANONYMISED_FIELDS},
+)
 
 
 # ---------------------------------------------------------------------------
@@ -182,3 +215,10 @@ class HealthResponse(BaseModel):
     n_trees: int
     n_features: int
     card_store_size: int = Field(description="Number of unique card identities in the in-memory store")
+
+
+class DatabaseHealthResponse(BaseModel):
+    status: Literal["ok", "down"]
+    latency_ms: Optional[float] = Field(description="Round trip for SELECT 1, in milliseconds")
+    server_version: Optional[str] = None
+    error: Optional[str] = Field(default=None, description="Exception class name when status is down")

@@ -1,5 +1,6 @@
 import asyncio
-from typing import AsyncGenerator
+import time
+from typing import Any, AsyncGenerator
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from app.schemas.score import ScoreResponse
@@ -36,11 +37,28 @@ class EventBroadcaster:
 
 broadcaster = EventBroadcaster()
 
-async def notify_new_transaction(resp: ScoreResponse, true_label: bool = None):
+# Request fields the dashboard displays next to each score.
+REQUEST_FIELDS = ("TransactionAmt", "ProductCD", "card1", "card4", "card6", "P_emaildomain", "DeviceType")
+
+
+def _plain(v: Any) -> Any:
+    """numpy scalars (from the simulator's DataFrame rows) → plain Python for json.dumps."""
+    return v.item() if hasattr(v, "item") else v
+
+
+async def notify_new_transaction(
+    resp: ScoreResponse,
+    true_label: bool | None = None,
+    request: dict | None = None,
+):
     # Include true_label in payload for demo
     data = resp.model_dump()
     data["true_label"] = true_label
-    await broadcaster.broadcast(json.dumps(data))
+    data["scored_at"] = int(time.time() * 1000)
+    if request:
+        for k in REQUEST_FIELDS:
+            data[k] = _plain(request.get(k))
+    await broadcaster.broadcast(json.dumps(data, default=str))
 
 async def event_generator(request: Request) -> AsyncGenerator[str, None]:
     q = broadcaster.add_queue()
@@ -63,4 +81,9 @@ async def event_generator(request: Request) -> AsyncGenerator[str, None]:
 @router.get("")
 async def stream_transactions(request: Request):
     """SSE endpoint for live transaction feed."""
-    return StreamingResponse(event_generator(request), media_type="text/event-stream")
+    # No caching, and tell reverse proxies (nginx, Hugging Face, …) not to buffer the stream.
+    return StreamingResponse(
+        event_generator(request),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

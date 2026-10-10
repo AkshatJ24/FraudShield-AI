@@ -28,14 +28,17 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 class _SigmoidCalibrator:
-    """Platt sigmoid: calibrated_prob = 1 / (1 + exp(a * raw + b))."""
+    """Platt sigmoid on the logit of the raw probability, matching ml/training/train.py::Calibrator:
+    calibrated_prob = 1 / (1 + exp(-(a * logit(raw) + b)))."""
 
     def __init__(self, a: float, b: float):
         self.a = a
         self.b = b
 
     def predict_proba(self, raw_scores: np.ndarray) -> np.ndarray:
-        return 1.0 / (1.0 + np.exp(self.a * raw_scores + self.b))
+        raw = np.clip(np.asarray(raw_scores, dtype="float64"), 1e-7, 1 - 1e-7)
+        z = np.log(raw / (1 - raw))
+        return 1.0 / (1.0 + np.exp(-(self.a * z + self.b)))
 
     @classmethod
     def from_json(cls, path: Path) -> "_SigmoidCalibrator":
@@ -50,9 +53,13 @@ class _SigmoidCalibrator:
 # ---------------------------------------------------------------------------
 
 class Thresholds:
-    def __init__(self, review_raw: float, block_raw: float):
+    def __init__(self, review_raw: float, block_raw: float,
+                 review_risk_score: int | None = None, block_risk_score: int | None = None):
         self.review_raw = review_raw
         self.block_raw = block_raw
+        # Published cut-offs on the 0–100 scale ("Review ≥ 5, Block ≥ 16").
+        self.review_risk_score = review_risk_score
+        self.block_risk_score = block_risk_score
 
     def decide(self, raw_score: float) -> str:
         if raw_score >= self.block_raw:
@@ -61,9 +68,22 @@ class Thresholds:
             return "REVIEW"
         return "APPROVE"
 
-    def to_risk_score(self, calibrated_prob: float) -> int:
-        """Map calibrated probability → integer 0–100 risk score."""
-        return min(100, max(0, round(calibrated_prob * 100)))
+    def to_risk_score(self, calibrated_prob: float, decision: str | None = None) -> int:
+        """Map calibrated probability → integer 0–100 risk score.
+
+        Decisions use the raw-score thresholds, whose calibrated values (5.34%, 16.15%) fall
+        between integers, so plain rounding can put a score on the wrong side of a published
+        cut-off (e.g. 4.7% → 5 but APPROVE). Passing the decision clamps the score into its band.
+        """
+        score = min(100, max(0, round(calibrated_prob * 100)))
+        r, b = self.review_risk_score, self.block_risk_score
+        if decision is None or r is None or b is None:
+            return score
+        if decision == "APPROVE":
+            return min(score, r - 1)
+        if decision == "REVIEW":
+            return min(max(score, r), b - 1)
+        return max(score, b)
 
     @classmethod
     def from_json(cls, path: Path) -> "Thresholds":
@@ -71,6 +91,8 @@ class Thresholds:
         return cls(
             review_raw=float(data["review_threshold_raw"]),
             block_raw=float(data["block_threshold_raw"]),
+            review_risk_score=data.get("review_risk_score"),
+            block_risk_score=data.get("block_risk_score"),
         )
 
 

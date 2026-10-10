@@ -65,13 +65,10 @@ def _request_to_df(req: ScoreRequest) -> pd.DataFrame:
     # Synthetic TransactionID (needed by replay() for tie-breaking sort)
     raw["TransactionID"] = 0
 
-    # has_identity: the API doesn't receive identity-table columns, so mark as 0
-    # (the model handles this gracefully)
-    raw["has_identity"] = 0
-
-    # Build single-row DataFrame; fill every column the module might look up
+    # Build single-row DataFrame; fill every column the module might look up.
+    # has_identity is set by ScoreRequest (sent, or derived from the id_* / Device* fields).
     row = {col: raw.get(col, None) for col in _ALL_KNOWN_COLS}
-    row["has_identity"] = 0
+    row["has_identity"] = int(bool(req.has_identity))
 
     df = pd.DataFrame([row])
     return df
@@ -126,8 +123,8 @@ def score_transaction(req: ScoreRequest, state: ModelState) -> ScoreResponse:
 
     # ── model inference ──────────────────────────────────────────────────────
     raw_score, calib_prob = state.score_one(feature_row)
-    risk_score = state.thresholds.to_risk_score(calib_prob)
     decision = state.thresholds.decide(raw_score)
+    risk_score = state.thresholds.to_risk_score(calib_prob, decision)
 
     # ── SHAP → reasons ────────────────────────────────────────────────────────
     shap_vals = state.shap_values(feature_row)

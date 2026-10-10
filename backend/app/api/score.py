@@ -37,15 +37,16 @@ async def score_endpoint(req: ScoreRequest, background_tasks: BackgroundTasks) -
         resp = score_transaction(req, model_state)
         # 6.2 Async write of each scored transaction
         # Only save if not a what_if check (or maybe save all but mark what_if? The schema doesn't distinguish what_if in DB. We can save all for history).
+        req_dict = req.model_dump(exclude_unset=True)
         background_tasks.add_task(
             save_transaction_task,
-            req.model_dump(exclude_unset=True),
+            req_dict,
             resp,
             False # is_simulated defaults to False for manual POST /score
         )
         # Notify SSE stream
         from app.api.stream import notify_new_transaction
-        background_tasks.add_task(notify_new_transaction, resp)
+        background_tasks.add_task(notify_new_transaction, resp, None, req_dict)
         return resp
     except Exception as exc:
         logger.exception("Scoring failed for request %s", req.transaction_id)

@@ -1,0 +1,49 @@
+{
+  "final_model": "lightgbm_tuned",
+  "fpr_target": 0.01,
+  "threshold_from_validation": 0.03405896618399812,
+  "holdout": {
+    "logreg": {
+      "n": 88581,
+      "fraud_rate": 0.03480430340592226,
+      "pr_auc": 0.37419114474185766,
+      "roc_auc": 0.8608194752695294,
+      "recall_at_fpr": 0.3194939993512812,
+      "threshold_at_fpr": 0.9355563521385193,
+      "precision_at_fpr": 0.5359085963003264,
+      "recall_at_thr": 0.37917612714888094,
+      "precision_at_thr": 0.4173509460906819,
+      "fpr_at_thr": 0.01908816580504807,
+      "flagged_share_at_thr": 0.03162077646447884
+    },
+    "lightgbm_tuned": {
+      "n": 88581,
+      "fraud_rate": 0.03480430340592226,
+      "pr_auc": 0.5633150584806843,
+      "roc_auc": 0.9082948732103355,
+      "recall_at_fpr": 0.48264677262406747,
+      "threshold_at_fpr": 0.07610786562520072,
+      "precision_at_fpr": 0.6375321336760925,
+      "recall_at_thr": 0.5264352903016543,
+      "precision_at_thr": 0.5583075335397317,
+      "fpr_at_thr": 0.015017895155442232,
+      "flagged_share_at_thr": 0.03281742134317743,
+      "calibration": {
+        "brier": 0.021461789825258287,
+        "log_loss": 0.08925746960072078,
+        "ece": 0.003552623057008547,
+        "mean_pred": 0.03746500002207188,
+        "observed_rate": 0.03480430340592226
+      }
+    }
+  },
+  "validation": {
+    "n": 88581,
+    "fraud_rate": 0.03434145019812375,
+    "pr_auc": 0.6562836808606329,
+    "roc_auc": 0.9299862713002198,
+    "recall_at_fpr": 0.5775805391190006,
+    "threshold_at_fpr": 0.03405896618399812,
+    "precision_at_fpr": 0.6726646248085758
+  }
+}

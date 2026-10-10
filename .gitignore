@@ -43,9 +43,11 @@ data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+# Small enough to commit: the offline holdout scores (parity test) and the deployable replay set.
+!data/processed/holdout_predictions.parquet
+!data/replay/
 ml/artifacts/*.joblib
 ml/artifacts/*.pkl
-ml/artifacts/*.json
 ml/artifacts/*.onnx
 !ml/artifacts/.gitkeep
 
@@ -61,3 +63,6 @@ ml/artifacts/*.onnx
 *.swo
 .DS_Store
 Thumbs.db
+
+# Local Claude Code / editor tooling
+.claude/

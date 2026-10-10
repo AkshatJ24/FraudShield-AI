@@ -131,6 +131,17 @@ class TestDecisionBands:
             score = t.to_risk_score(prob)
             assert 0 <= score <= 100
 
+    def test_risk_score_stays_inside_decision_band(self):
+        """Rounding the calibrated probability must not cross the published 0-100 cut-offs."""
+        from app.core.model_state import Thresholds
+        t = Thresholds(review_raw=0.01, block_raw=0.10, review_risk_score=5, block_risk_score=16)
+        assert t.to_risk_score(0.0474, "APPROVE") == 4      # rounds to 5, but approved
+        assert t.to_risk_score(0.0474, "REVIEW") == 5
+        assert t.to_risk_score(0.1580, "REVIEW") == 15     # rounds to 16, but only review
+        assert t.to_risk_score(0.1580, "BLOCK") == 16
+        assert t.to_risk_score(0.9000, "BLOCK") == 90
+        assert t.to_risk_score(0.0200, "APPROVE") == 2
+
     def test_real_thresholds_loaded(self):
         """Thresholds from file match expected bands documented in thresholds.json."""
         from app.core.model_state import Thresholds
@@ -251,8 +262,9 @@ class TestScoreTransaction:
             P_emaildomain="protonmail.com",
         )
         resp = score_transaction(req, state)
-        # With card testing pattern + huge amount, score should be elevated
-        assert resp.score > 10
+        # With card testing pattern + huge amount, the transaction should be flagged
+        assert resp.decision != "APPROVE"
+        assert resp.score >= 5  # review_risk_score in thresholds.json
 
     def test_transaction_id_auto_generated(self, state):
         from app.schemas.score import ScoreRequest

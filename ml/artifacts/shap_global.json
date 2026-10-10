@@ -1,0 +1,143 @@
+{
+  "n_rows": 5000,
+  "top_features": [
+    {
+      "feature": "C13",
+      "mean_abs_shap": 0.6080217848620479
+    },
+    {
+      "feature": "C1",
+      "mean_abs_shap": 0.33593588380489986
+    },
+    {
+      "feature": "card2",
+      "mean_abs_shap": 0.2859040279247594
+    },
+    {
+      "feature": "card1",
+      "mean_abs_shap": 0.2858989394294743
+    },
+    {
+      "feature": "C14",
+      "mean_abs_shap": 0.28528743024496805
+    },
+    {
+      "feature": "D1",
+      "mean_abs_shap": 0.23424718663044825
+    },
+    {
+      "feature": "addr1",
+      "mean_abs_shap": 0.2284117411657889
+    },
+    {
+      "feature": "TransactionAmt",
+      "mean_abs_shap": 0.22292724341342005
+    },
+    {
+      "feature": "card6_code",
+      "mean_abs_shap": 0.21946224517868895
+    },
+    {
+      "feature": "C2",
+      "mean_abs_shap": 0.20681301901197344
+    },
+    {
+      "feature": "dist1",
+      "mean_abs_shap": 0.2026978735450389
+    },
+    {
+      "feature": "C5",
+      "mean_abs_shap": 0.19836767732428012
+    },
+    {
+      "feature": "P_emaildomain_freq",
+      "mean_abs_shap": 0.19537507634628673
+    },
+    {
+      "feature": "amt_cents",
+      "mean_abs_shap": 0.190281375407503
+    },
+    {
+      "feature": "a_hist_count",
+      "mean_abs_shap": 0.1855849532146113
+    },
+    {
+      "feature": "C11",
+      "mean_abs_shap": 0.17729644242560463
+    },
+    {
+      "feature": "a_hist_amt_mean",
+      "mean_abs_shap": 0.17373438072971242
+    },
+    {
+      "feature": "V70",
+      "mean_abs_shap": 0.16932602453953519
+    },
+    {
+      "feature": "D10",
+      "mean_abs_shap": 0.1638751209940473
+    },
+    {
+      "feature": "D4",
+      "mean_abs_shap": 0.16219526473522022
+    },
+    {
+      "feature": "card5",
+      "mean_abs_shap": 0.1491888161190589
+    },
+    {
+      "feature": "D2",
+      "mean_abs_shap": 0.14727877756561558
+    },
+    {
+      "feature": "hour_rel",
+      "mean_abs_shap": 0.14170239825571754
+    },
+    {
+      "feature": "M5_code",
+      "mean_abs_shap": 0.13483961715541673
+    },
+    {
+      "feature": "D15",
+      "mean_abs_shap": 0.1340585972036195
+    },
+    {
+      "feature": "amt_vs_a_mean",
+      "mean_abs_shap": 0.12752376156867995
+    },
+    {
+      "feature": "M6_code",
+      "mean_abs_shap": 0.11976798041877991
+    },
+    {
+      "feature": "M4_code",
+      "mean_abs_shap": 0.11434999224151024
+    },
+    {
+      "feature": "C6",
+      "mean_abs_shap": 0.11108486603552371
+    },
+    {
+      "feature": "n_null_D",
+      "mean_abs_shap": 0.1065643898045956
+    }
+  ],
+  "group_share": {
+    "V (anonymized)": 0.27219551376058704,
+    "C (counts)": 0.18985234103848014,
+    "Card / address": 0.1341865155037457,
+    "D (time deltas)": 0.11401607232150693,
+    "Card history (engineered)": 0.08592082659811823,
+    "M (match flags)": 0.055109812719691655,
+    "Amount": 0.04437404096121124,
+    "Device / browser": 0.040642383764097734,
+    "Email": 0.029653470279916036,
+    "Time pattern": 0.019503654130405508,
+    "Missingness signals": 0.009845202306101532,
+    "Product": 0.004700166616138434
+  },
+  "native_shap_latency_ms": {
+    "p50": 296.84680000082153,
+    "p95": 307.4995750005655
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "model": "lightgbm",
+  "params": {
+    "num_leaves": 200,
+    "min_child_samples": 25,
+    "subsample": 0.7415316378184691,
+    "colsample_bytree": 0.6285349446422425,
+    "reg_lambda": 0.26648177317130706,
+    "reg_alpha": 0.002145930773051573,
+    "spw_mult": 0.14852811957328055
+  }
+}

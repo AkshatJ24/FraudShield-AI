@@ -1,0 +1,7 @@
+*
+!backend/
+!ml/artifacts/
+!data/replay/
+backend/tests/
+**/__pycache__/
+**/.pytest_cache/

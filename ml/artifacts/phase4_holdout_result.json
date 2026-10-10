@@ -1,0 +1,85 @@
+{
+  "cost_model": {
+    "fraud_loss_rate": 1.0,
+    "chargeback_fee": 15.0,
+    "block_margin_rate": 0.08,
+    "block_friction": 5.0,
+    "analyst_cost": 3.0,
+    "review_accuracy": 0.95,
+    "review_delay_cost": 0.5
+  },
+  "t_review": 0.001454111660385927,
+  "t_block": 0.014548117877237352,
+  "holdout": {
+    "n": 88581,
+    "fraud_count": 3083,
+    "fraud_rate": 0.03480430340592226,
+    "bands": {
+      "APPROVE": {
+        "count": 79406,
+        "share": 0.8964224833767964,
+        "fraud_rate": 0.009822935294562124,
+        "fraud_caught": 780
+      },
+      "REVIEW": {
+        "count": 5332,
+        "share": 0.06019349521906504,
+        "fraud_rate": 0.09621155288822206,
+        "fraud_caught": 513
+      },
+      "BLOCK": {
+        "count": 3843,
+        "share": 0.043384021404138585,
+        "fraud_rate": 0.46578194119177724,
+        "fraud_caught": 1790
+      }
+    },
+    "recall_review_or_block": 0.7469996756406098,
+    "recall_block_only": 0.5806033084657801,
+    "cost_total": 209627.89639475156,
+    "cost_approve_all": 515853.5207853317,
+    "savings": 306225.62439058017,
+    "savings_pct": 0.5936290284970518,
+    "savings_per_100k_txns": 345701.25014459103,
+    "breakdown": {
+      "missed_fraud_cost": 142750.90868282318,
+      "blocked_legit_cost": 38604.09072131634,
+      "review_cost_total": 28272.89699061204
+    },
+    "fraud_dollars_total": 469608.5207853317,
+    "fraud_dollars_in_approved": 131050.90868282318
+  },
+  "bootstrap": {
+    "n_days": 31,
+    "savings_pct_90ci": [
+      0.5605682895698534,
+      0.6247267895006652
+    ],
+    "savings_90ci": [
+      270032.40126967686,
+      345047.75421284913
+    ]
+  },
+  "reference": [
+    {
+      "index": "Approve everything",
+      "cost": 515853.5207853317,
+      "savings_vs_approve_all_%": 0.0
+    },
+    {
+      "index": "Single threshold (no review)",
+      "cost": 263680.3301366281,
+      "savings_vs_approve_all_%": 48.88465048465637
+    },
+    {
+      "index": "Two thresholds + review (shipped)",
+      "cost": 209627.89639475156,
+      "savings_vs_approve_all_%": 59.36290284970518
+    },
+    {
+      "index": "Amount-aware reference (not shipped)",
+      "cost": 150229.43557361557,
+      "savings_vs_approve_all_%": 70.87750116643434
+    }
+  ]
+}

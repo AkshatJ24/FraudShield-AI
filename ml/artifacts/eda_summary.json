@@ -1,0 +1,141 @@
+{
+  "n_transactions": 590540,
+  "n_columns_merged": 440,
+  "fraud_rate": 0.03499000914417313,
+  "has_identity_pct": 24.42391709283029,
+  "proposed_split": {
+    "train_end_dt": 10437998,
+    "val_end_dt": 13151845,
+    "max_dt": 15811131,
+    "train_end_day": 120,
+    "val_end_day": 152,
+    "note": "train: DT <= train_end_dt | validation: train_end_dt < DT <= val_end_dt | holdout: DT > val_end_dt"
+  },
+  "card_identity_candidates": [
+    {
+      "definition": "Key A: card1-6 + addr1-2",
+      "n_groups": 43071,
+      "singleton_groups_%": 40.41466415917903,
+      "median_group_size": 2.0,
+      "txns_in_groups>=5_%": 91.63121888441088,
+      "groups_with_any_fraud": 3548,
+      "fraud_in_groups_with>=2_frauds_%": 91.67110293761796
+    },
+    {
+      "definition": "Key B: Key A + (day - D1)",
+      "n_groups": 222518,
+      "singleton_groups_%": 57.97643336718827,
+      "median_group_size": 1.0,
+      "txns_in_groups>=5_%": 50.028956548243976,
+      "groups_with_any_fraud": 8199,
+      "fraud_in_groups_with>=2_frauds_%": 77.70410879349562
+    }
+  ],
+  "top_missingness_signals": [
+    {
+      "column": "D7",
+      "null_pct": 93.4099,
+      "fraud_rate_if_null": 0.027,
+      "fraud_rate_if_present": 0.1488,
+      "lift": 0.1812
+    },
+    {
+      "column": "addr2",
+      "null_pct": 11.1264,
+      "fraud_rate_if_null": 0.1178,
+      "fraud_rate_if_present": 0.0246,
+      "lift": 4.785
+    },
+    {
+      "column": "addr1",
+      "null_pct": 11.1264,
+      "fraud_rate_if_null": 0.1178,
+      "fraud_rate_if_present": 0.0246,
+      "lift": 4.785
+    },
+    {
+      "column": "D12",
+      "null_pct": 89.041,
+      "fraud_rate_if_null": 0.0248,
+      "fraud_rate_if_present": 0.1174,
+      "lift": 0.2116
+    },
+    {
+      "column": "D14",
+      "null_pct": 89.4695,
+      "fraud_rate_if_null": 0.0255,
+      "fraud_rate_if_present": 0.116,
+      "lift": 0.2195
+    },
+    {
+      "column": "D13",
+      "null_pct": 89.5093,
+      "fraud_rate_if_null": 0.0262,
+      "fraud_rate_if_present": 0.1104,
+      "lift": 0.237
+    },
+    {
+      "column": "D6",
+      "null_pct": 87.6068,
+      "fraud_rate_if_null": 0.025,
+      "fraud_rate_if_present": 0.1055,
+      "lift": 0.2373
+    },
+    {
+      "column": "id_10",
+      "null_pct": 87.3123,
+      "fraud_rate_if_null": 0.0249,
+      "fraud_rate_if_present": 0.1045,
+      "lift": 0.2383
+    },
+    {
+      "column": "id_09",
+      "null_pct": 87.3123,
+      "fraud_rate_if_null": 0.0249,
+      "fraud_rate_if_present": 0.1045,
+      "lift": 0.2383
+    },
+    {
+      "column": "D9",
+      "null_pct": 87.3123,
+      "fraud_rate_if_null": 0.0249,
+      "fraud_rate_if_present": 0.1045,
+      "lift": 0.2383
+    },
+    {
+      "column": "D8",
+      "null_pct": 87.3123,
+      "fraud_rate_if_null": 0.0249,
+      "fraud_rate_if_present": 0.1045,
+      "lift": 0.2383
+    },
+    {
+      "column": "id_03",
+      "null_pct": 88.7689,
+      "fraud_rate_if_null": 0.0259,
+      "fraud_rate_if_present": 0.1072,
+      "lift": 0.2411
+    },
+    {
+      "column": "id_04",
+      "null_pct": 88.7689,
+      "fraud_rate_if_null": 0.0259,
+      "fraud_rate_if_present": 0.1072,
+      "lift": 0.2411
+    },
+    {
+      "column": "R_emaildomain",
+      "null_pct": 76.7516,
+      "fraud_rate_if_null": 0.0208,
+      "fraud_rate_if_present": 0.0818,
+      "lift": 0.2546
+    },
+    {
+      "column": "id_13",
+      "null_pct": 78.4401,
+      "fraud_rate_if_null": 0.0217,
+      "fraud_rate_if_present": 0.0832,
+      "lift": 0.2615
+    }
+  ]
+}

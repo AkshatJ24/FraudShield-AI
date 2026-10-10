@@ -1,0 +1,333 @@
+{
+  "version": 1,
+  "max_reasons": 3,
+  "min_contribution": 0.05,
+  "max_anonymized": 1,
+  "fallback_reason": "Overall transaction pattern resembles past fraud",
+  "rules": {
+    "b_txn_count_10m": {
+      "bins": [
+        {
+          "min": 1,
+          "text": "{v:.0f} earlier transaction(s) on this card in the last 10 minutes"
+        }
+      ]
+    },
+    "b_txn_count_1h": {
+      "bins": [
+        {
+          "min": 1,
+          "text": "{v:.0f} earlier transaction(s) on this card in the last hour"
+        }
+      ]
+    },
+    "b_txn_count_24h": {
+      "bins": [
+        {
+          "min": 2,
+          "text": "{v:.0f} earlier transactions on this card in the last 24 hours"
+        }
+      ]
+    },
+    "a_txn_count_1h": {
+      "bins": [
+        {
+          "min": 2,
+          "text": "Heavy recent activity on this card profile ({v:.0f} transactions in the last hour)"
+        }
+      ]
+    },
+    "a_txn_count_24h": {
+      "bins": [
+        {
+          "min": 5,
+          "text": "Heavy recent activity on this card profile ({v:.0f} transactions in 24 hours)"
+        }
+      ]
+    },
+    "b_amt_sum_1h": {
+      "bins": [
+        {
+          "min": 1,
+          "text": "${v:,.0f} already spent on this card in the last hour"
+        }
+      ]
+    },
+    "b_amt_sum_24h": {
+      "bins": [
+        {
+          "min": 1,
+          "text": "${v:,.0f} already spent on this card in the last 24 hours"
+        }
+      ]
+    },
+    "amt_vs_b_mean": {
+      "bins": [
+        {
+          "max": 0.5,
+          "text": "Amount is unusually small for this card ({v:.2f}x its usual amount), a card-testing pattern"
+        },
+        {
+          "min": 2.0,
+          "text": "Amount is {v:.1f}x this card's usual amount"
+        }
+      ]
+    },
+    "amt_vs_a_mean": {
+      "bins": [
+        {
+          "max": 0.5,
+          "text": "Amount is unusually small for this card profile ({v:.2f}x usual)"
+        },
+        {
+          "min": 2.0,
+          "text": "Amount is {v:.1f}x this card profile's usual amount"
+        }
+      ]
+    },
+    "amt_log": {
+      "transform": "expm1",
+      "text": "Amount of ${v:,.2f} is in a range that carries higher fraud risk"
+    },
+    "TransactionAmt": {
+      "text": "Amount of ${v:,.2f} is in a range that carries higher fraud risk"
+    },
+    "amt_cents": {
+      "text": "Unusual cents pattern in the amount"
+    },
+    "b_hist_count": {
+      "bins": [
+        {
+          "max": 0,
+          "text": "No earlier history for this card (first time it is seen)"
+        },
+        {
+          "min": 1,
+          "max": 2,
+          "text": "Very little history for this card ({v:.0f} earlier transaction(s))"
+        }
+      ]
+    },
+    "a_hist_count": {
+      "bins": [
+        {
+          "max": 0,
+          "text": "No earlier history for this card profile"
+        },
+        {
+          "min": 1,
+          "max": 2,
+          "text": "Very little history for this card profile ({v:.0f} earlier transaction(s))"
+        }
+      ]
+    },
+    "b_time_since_last": {
+      "bins": [
+        {
+          "max": 60,
+          "scale": 1,
+          "text": "Only {v:.0f} seconds since the previous transaction on this card"
+        },
+        {
+          "min": 60.0001,
+          "max": 3600,
+          "scale": 60,
+          "text": "Only {v:.0f} minutes since the previous transaction on this card"
+        },
+        {
+          "min": 3600.0001,
+          "max": 172800,
+          "scale": 3600,
+          "text": "Only {v:.0f} hours since the previous transaction on this card"
+        },
+        {
+          "min": 1209600,
+          "scale": 86400,
+          "text": "Card was dormant for {v:.0f} days before this transaction"
+        }
+      ]
+    },
+    "new_device_flag": {
+      "values": {
+        "1": "First time this device is used with this card"
+      }
+    },
+    "new_email_flag": {
+      "values": {
+        "1": "First time this email domain is used with this card"
+      }
+    },
+    "email_match": {
+      "values": {
+        "1": "Purchaser and recipient email domains match (a pattern seen more often in past fraud)"
+      }
+    },
+    "has_identity": {
+      "values": {
+        "1": "Device and browser identity data is attached (seen more often in past fraud)"
+      }
+    },
+    "addr_missing": {
+      "values": {
+        "1": "Billing address is missing"
+      }
+    },
+    "r_email_present": {
+      "values": {
+        "1": "A recipient email domain is present (seen more often in past fraud)"
+      }
+    },
+    "n_null_D": {
+      "text": "Pattern of missing card-history fields resembles past fraud",
+      "kind": "anonymized"
+    },
+    "n_null_id": {
+      "text": "Pattern of missing device-identity fields resembles past fraud",
+      "kind": "anonymized"
+    },
+    "hour_rel": {
+      "text": "Transaction timing resembles past fraud"
+    },
+    "dow_rel": {
+      "text": "Transaction timing resembles past fraud"
+    },
+    "ProductCD_code": {
+      "text": "Product type carries elevated fraud risk in past data"
+    },
+    "card4_code": {
+      "text": "Card network carries elevated fraud risk in past data"
+    },
+    "card6_code": {
+      "text": "Card type carries elevated fraud risk in past data"
+    },
+    "DeviceType_code": {
+      "text": "Device type carries elevated fraud risk in past data"
+    },
+    "M1_code": {
+      "text": "Billing/card match check M1 carries elevated fraud risk in past data"
+    },
+    "M2_code": {
+      "text": "Billing/card match check M2 carries elevated fraud risk in past data"
+    },
+    "M3_code": {
+      "text": "Billing/card match check M3 carries elevated fraud risk in past data"
+    },
+    "M4_code": {
+      "text": "Billing/card match check M4 carries elevated fraud risk in past data"
+    },
+    "M5_code": {
+      "text": "Billing/card match check M5 carries elevated fraud risk in past data"
+    },
+    "M6_code": {
+      "text": "Billing/card match check M6 carries elevated fraud risk in past data"
+    },
+    "M7_code": {
+      "text": "Billing/card match check M7 carries elevated fraud risk in past data"
+    },
+    "M8_code": {
+      "text": "Billing/card match check M8 carries elevated fraud risk in past data"
+    },
+    "M9_code": {
+      "text": "Billing/card match check M9 carries elevated fraud risk in past data"
+    },
+    "P_emaildomain_freq": {
+      "bins": [
+        {
+          "max": 0.001,
+          "text": "Purchaser email domain is rare or has never been seen before"
+        },
+        {
+          "min": 0.001,
+          "text": "Purchaser email domain matches a profile with elevated fraud in past data"
+        }
+      ]
+    },
+    "R_emaildomain_freq": {
+      "bins": [
+        {
+          "max": 0.001,
+          "text": "Recipient email domain is rare or has never been seen before"
+        },
+        {
+          "min": 0.001,
+          "text": "Recipient email domain matches a profile with elevated fraud in past data"
+        }
+      ]
+    },
+    "DeviceInfo_freq": {
+      "bins": [
+        {
+          "max": 0.001,
+          "text": "Device model is rare or has never been seen before"
+        },
+        {
+          "min": 0.001,
+          "text": "Device model matches a profile with elevated fraud in past data"
+        }
+      ]
+    },
+    "id_30_freq": {
+      "bins": [
+        {
+          "max": 0.001,
+          "text": "Operating system is rare or has never been seen before"
+        },
+        {
+          "min": 0.001,
+          "text": "Operating system matches a profile with elevated fraud in past data"
+        }
+      ]
+    },
+    "id_31_freq": {
+      "bins": [
+        {
+          "max": 0.001,
+          "text": "Browser and version is rare or has never been seen before"
+        },
+        {
+          "min": 0.001,
+          "text": "Browser and version matches a profile with elevated fraud in past data"
+        }
+      ]
+    },
+    "id_33_freq": {
+      "bins": [
+        {
+          "max": 0.001,
+          "text": "Screen resolution is rare or has never been seen before"
+        },
+        {
+          "min": 0.001,
+          "text": "Screen resolution matches a profile with elevated fraud in past data"
+        }
+      ]
+    }
+  },
+  "group_rules": [
+    {
+      "pattern": "^V\\d+$",
+      "text": "Combination of anonymized transaction-risk signals is unusual",
+      "kind": "anonymized"
+    },
+    {
+      "pattern": "^C\\d+$",
+      "text": "Unusual number of cards, addresses or devices linked to this payment",
+      "kind": "anonymized"
+    },
+    {
+      "pattern": "^D\\d+$",
+      "text": "Unusual timing relative to earlier activity on this card",
+      "kind": "anonymized"
+    },
+    {
+      "pattern": "^id_\\d+$",
+      "text": "Device and browser identity signals look risky",
+      "kind": "anonymized"
+    },
+    {
+      "pattern": "^(card\\d|addr\\d|dist\\d)$",
+      "text": "Card or billing-address profile resembles past fraud",
+      "kind": "anonymized"
+    }
+  ]
+}

@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Repo root: backend/app/core/config.py  →  ../../.. = repo root
@@ -30,6 +32,28 @@ class Settings(BaseSettings):
 
     # ── database ──────────────────────────────────────────────────────────────
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/fraudshield"
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def _asyncpg_url(cls, url: str) -> str:
+        """Accept a hosted provider's URL as-is (Neon, Supabase, Render …): force the asyncpg
+        driver and translate libpq's `sslmode` (which asyncpg rejects) into asyncpg's `ssl`."""
+        for prefix in ("postgres://", "postgresql://"):
+            if url.startswith(prefix):
+                url = "postgresql+asyncpg://" + url[len(prefix):]
+        parts = urlsplit(url)
+        query = dict(parse_qsl(parts.query))
+        sslmode = query.pop("sslmode", None)
+        query.pop("channel_binding", None)
+        if sslmode and sslmode != "disable" and "ssl" not in query:
+            query["ssl"] = "require"
+        return urlunsplit(parts._replace(query=urlencode(query)))
+
+    # Pause the simulator after this many seconds with no dashboard connected (0 = never).
+    SIMULATOR_IDLE_PAUSE_S: int = 300
+
+    # Comma-separated list of allowed browser origins, e.g. "https://fraudshield.vercel.app".
+    CORS_ORIGINS: str = "*"
 
     # ── ML artifact paths ─────────────────────────────────────────────────────
     MODEL_PATH: Path = _ARTIFACTS / "model.lgb.txt"

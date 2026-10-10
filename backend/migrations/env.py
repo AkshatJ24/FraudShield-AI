@@ -26,7 +26,8 @@ from app.db.models import TransactionRecord
 from app.core.config import settings
 
 target_metadata = Base.metadata
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# configparser treats % as interpolation; URL-encoded passwords contain it.
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

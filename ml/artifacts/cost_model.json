@@ -1,0 +1,9 @@
+{
+  "fraud_loss_rate": 1.0,
+  "chargeback_fee": 15.0,
+  "block_margin_rate": 0.08,
+  "block_friction": 5.0,
+  "analyst_cost": 3.0,
+  "review_accuracy": 0.95,
+  "review_delay_cost": 0.5
+}

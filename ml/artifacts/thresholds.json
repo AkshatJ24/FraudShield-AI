@@ -1,0 +1,75 @@
+{
+  "version": "lightgbm-20261009-082818-e67cbcb5",
+  "score_basis": "raw_score (model output before calibration); flag when score >= threshold",
+  "review_threshold_raw": 0.001454111660385927,
+  "block_threshold_raw": 0.014548117877237352,
+  "review_risk_score": 5,
+  "block_risk_score": 16,
+  "review_capacity_cap": 0.05,
+  "bands": {
+    "APPROVE": "raw < review",
+    "REVIEW": "review <= raw < block",
+    "BLOCK": "raw >= block"
+  },
+  "validation": {
+    "n": 88581,
+    "fraud_rate": 0.03434145019812375,
+    "recall_review_or_block": 0.7758053911900066,
+    "recall_block_only": 0.6272189349112426,
+    "savings_pct": 0.6905766782558206,
+    "savings_per_100k_txns": 422961.81493169104,
+    "bands": {
+      "APPROVE": {
+        "count": 80900,
+        "share": 0.913288402704869,
+        "fraud_rate": 0.008430160692212607,
+        "fraud_caught": 682
+      },
+      "REVIEW": {
+        "count": 4395,
+        "share": 0.04961560605547465,
+        "fraud_rate": 0.10284414106939704,
+        "fraud_caught": 452
+      },
+      "BLOCK": {
+        "count": 3286,
+        "share": 0.03709599123965636,
+        "fraud_rate": 0.5806451612903226,
+        "fraud_caught": 1908
+      }
+    }
+  },
+  "holdout": {
+    "n": 88581,
+    "fraud_rate": 0.03480430340592226,
+    "recall_review_or_block": 0.7469996756406098,
+    "recall_block_only": 0.5806033084657801,
+    "savings": 306225.62439058017,
+    "savings_pct": 0.5936290284970518,
+    "savings_per_100k_txns": 345701.25014459103,
+    "bands": {
+      "APPROVE": {
+        "count": 79406,
+        "share": 0.8964224833767964,
+        "fraud_rate": 0.009822935294562124,
+        "fraud_caught": 780
+      },
+      "REVIEW": {
+        "count": 5332,
+        "share": 0.06019349521906504,
+        "fraud_rate": 0.09621155288822206,
+        "fraud_caught": 513
+      },
+      "BLOCK": {
+        "count": 3843,
+        "share": 0.043384021404138585,
+        "fraud_rate": 0.46578194119177724,
+        "fraud_caught": 1790
+      }
+    }
+  },
+  "holdout_savings_pct_90ci": [
+    0.5605682895698534,
+    0.6247267895006652
+  ]
+}
