@@ -13,11 +13,11 @@ A full ML system on the IEEE-CIS dataset: leakage-safe feature engineering, a ca
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 
-**[Demo video](https://YOUR-DEMO-VIDEO-LINK)** · [Live demo](https://YOUR-LIVE-DEMO-LINK) · [API docs](https://YOUR-API-LINK/docs) · [How it works](#how-it-works) · [Results](#results)
+**[Demo video](https://YOUR-DEMO-VIDEO-LINK)** · [Live demo](https://fraud-shield-ai-gold.vercel.app/) · [API docs](https://fraudshield-ai-f2eca.containers.snapdeploy.app/docs) · [How it works](#how-it-works) · [Results](#results)
 
 <sub>The live demo runs on a free tier that sleeps when idle: the first visit takes a minute or two to wake the server, and scoring is slower than on a full CPU. The video shows the full experience.</sub>
 
-<!-- Replace the three links above once the video is uploaded and the project is deployed. -->
+<!-- Replace the demo video link once the video is uploaded. -->
 
 ![FraudShield dashboard](docs/screenshots/overview.png)
 
@@ -261,8 +261,8 @@ The 36 tests cover feature leakage and training/serving parity, schema validatio
 
 | Part | Platform | Notes |
 |---|---|---|
-| Dashboard | **Vercel** | Root directory `frontend`, env `VITE_API_URL` = the API URL |
-| API | **SnapDeploy** (Docker, from GitHub) | Builds the root `Dockerfile`; port `7860`; secret `DATABASE_URL` |
+| Dashboard | **Vercel**: [fraud-shield-ai-gold.vercel.app](https://fraud-shield-ai-gold.vercel.app/) | Root directory `frontend`, env `VITE_API_URL` = the API URL |
+| API | **SnapDeploy** (Docker, from GitHub): [API docs](https://fraudshield-ai-f2eca.containers.snapdeploy.app/docs) | Builds the root `Dockerfile`; port `7860`; secret `DATABASE_URL` |
 | Database | **Neon** (serverless Postgres) | Paste the connection string as the `DATABASE_URL` secret, as-is |
 
 The API image holds the model artifacts and a 20 MB replay set (`data/replay/`, built with `python -m app.api.simulator --export`) instead of the 800 MB of raw CSVs and the full feature table. The replay set has the holdout rows, read one chunk at a time, and a snapshot of card history for just the cards the holdout uses. Scores are unchanged, and a test checks they still match the offline holdout exactly.
