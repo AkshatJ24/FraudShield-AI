@@ -28,4 +28,5 @@ USER user
 WORKDIR /app/backend
 
 EXPOSE 7860
-CMD alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT}
+# Migrations + server (backend/start.sh). Hosts with a "start command" field: use `sh start.sh`.
+CMD ["sh", "start.sh"]
