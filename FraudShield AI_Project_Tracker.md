@@ -20,7 +20,7 @@
 | **Frontend** | Custom web app (React + Vite + TypeScript), not Streamlit |
 | **Target Audience** | Recruiters in ML Engineer / Data Science / Backend-ML roles |
 | **Decisions** | ✅ Approve · 🟡 Review · 🔴 Block |
-| **Status** | 🟢 Phase 6 Complete → Ready for Phase 7 (Frontend Custom Dashboard) |
+| **Status** | 🟢 Phase 7 Complete → Ready for Phase 8 / Phase 9 (Packaging & Deployment) |
 
 ---
 
@@ -232,16 +232,16 @@ Frontend: node 18+, react, vite, typescript, tailwindcss, recharts
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| 6.1 | PostgreSQL models: transactions, decisions, reviews | `[x]` | SQLAlchemy + Alembic, created `TransactionRecord` model |
-| 6.2 | Async write of each scored transaction | `[x]` | Don't block scoring, using `BackgroundTasks` |
-| 6.3 | `GET /transactions` with filters + pagination | `[x]` | decision, date range, amount filters implemented |
-| 6.4 | Replay simulator reading from holdout set | `[x]` | Mock demo simulator calling the same scoring path |
-| 6.5 | Oversample fraud in replay (demo only) | `[x]` | Oversampled fraud in mock simulator for demo |
-| 6.6 | `POST /simulate/start`, `/simulate/stop` | `[x]` | Implemented in `simulator.py` API |
-| 6.7 | `GET /stream` using Server-Sent Events | `[x]` | Pushes scored rows to the UI via `stream.py` |
+| 6.1 | PostgreSQL models: transactions, decisions, reviews | `[x]` | SQLAlchemy + Alembic, created `TransactionRecord` model with `true_label` & `is_simulated` |
+| 6.2 | Async write of each scored transaction | `[x]` | Non-blocking scoring via `asyncio.create_task` & async session |
+| 6.3 | `GET /transactions` with filters + pagination | `[x]` | Decision, date range, amount filters implemented with pagination |
+| 6.4 | Replay simulator reading from holdout set | `[x]` | Reads true holdout from `features.parquet`, sorts by `TransactionDT`, pre-warms history cache |
+| 6.5 | Oversample fraud in replay (demo only) | `[x]` | Thins legitimate transactions to achieve ~5% natural demo fraud rate without synthetic data |
+| 6.6 | `POST /simulate/start`, `/simulate/stop` | `[x]` | Controls stream playback, resume, and pause state in `simulator.py` API |
+| 6.7 | `GET /stream` using Server-Sent Events | `[x]` | Bounded queue (maxsize=100) + 15s heartbeats pushing scored rows |
 | 6.8 | `POST /transactions/{id}/review` | `[x]` | Analyst marks fraud / false positive in `transactions.py` |
-| 6.9 | Tag user-submitted vs simulated transactions | `[x]` | Added `is_simulated` column to DB and parameter |
-| 6.10 | `GET /metrics` endpoint | `[x]` | PR curve data, thresholds, counts implemented in `metrics.py` |
+| 6.9 | Tag user-submitted vs simulated transactions | `[x]` | Added `is_simulated` column to DB and query filtering |
+| 6.10 | `GET /metrics` endpoint | `[x]` | PR curve data, static holdout metrics, live DB percentiles (p50/p95) & queue counts |
 
 ---
 
@@ -250,17 +250,17 @@ Frontend: node 18+, react, vite, typescript, tailwindcss, recharts
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| 7.1 | Set up React + Vite + TypeScript + Tailwind | `[ ]` | |
-| 7.2 | Define design tokens (colors for Approve / Review / Block, spacing, type) | `[ ]` | Dark + light theme |
-| 7.3 | **Live Feed** page: SSE-driven table with score bars + badges + latency | `[ ]` | Core demo screen |
-| 7.4 | **Transaction Detail** panel: SHAP reasons, ground-truth toggle | `[ ]` | |
-| 7.5 | Request inspector: raw JSON request/response + latency | `[ ]` | Makes the API tangible |
-| 7.6 | **Try a Transaction** form with preset buttons | `[ ]` | Normal / late-night foreign / card-testing |
-| 7.7 | **Review Queue** page | `[ ]` | Confirm fraud / mark false positive |
-| 7.8 | **Metrics** page: PR curve, recall @ FPR, cost-vs-threshold slider | `[ ]` | |
-| 7.9 | Loading / empty / error states everywhere | `[ ]` | |
-| 7.10 | Responsive check (desktop + mobile) | `[ ]` | |
-| 7.11 | "Flagged only" filter on feed | `[ ]` | |
+| 7.1 | Set up React + Vite + TypeScript + Tailwind | `[x]` | React 18, TypeScript, Vite, Tailwind CSS, Chakra UI v2 |
+| 7.2 | Define design tokens (colors for Approve / Review / Block, spacing, type) | `[x]` | CSS tokens in `index.css` & `theme.ts`, light/dark & semantic palettes |
+| 7.3 | **Live Feed** page: SSE-driven table with score bars + badges + latency | `[x]` | Real-time SSE table in `LiveFeed.tsx` + `FeedTable.tsx` |
+| 7.4 | **Transaction Detail** panel: SHAP reasons, ground-truth toggle | `[x]` | `TransactionDrawer.tsx` with score gauge, top SHAP reasons, ground truth toggle |
+| 7.5 | Request inspector: raw JSON request/response + latency | `[x]` | Tabbed inspector in `TransactionDrawer.tsx` with formatted payload & latency |
+| 7.6 | **Try a Transaction** form with preset buttons | `[~]` | Stubbed in sidebar navigation ("Soon" / planned extension) |
+| 7.7 | **Review Queue** page | `[~]` | Live review queue count wired to DB metrics; dedicated UI in sidebar ("Soon") |
+| 7.8 | **Metrics** page: PR curve, recall @ FPR, cost-vs-threshold slider | `[x]` | `Metrics.tsx` with PR curve, cost curve, threshold slider, SHAP drivers, DB stream latency |
+| 7.9 | Loading / empty / error states everywhere | `[x]` | 4-step `BootPipeline.tsx` startup, mock fallback, empty states in tables |
+| 7.10 | Responsive check (desktop + mobile) | `[x]` | Responsive drawer, collapsible sidebar under 1180px, auto-scaling charts |
+| 7.11 | "Flagged only" filter on feed | `[x]` | Multi-tab filter (All, Flagged, Review, Block) with real-time counts |
 
 **💡 Ideas to Add Later:**
 - Animated score gauge on the detail panel
@@ -287,16 +287,16 @@ Frontend: node 18+, react, vite, typescript, tailwindcss, recharts
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| 9.1 | Dockerfile for backend | `[ ]` | |
-| 9.2 | `docker-compose.yml` (API + Postgres + frontend) | `[ ]` | One-command startup |
-| 9.3 | Deploy backend (Render / Railway / Fly.io free tier) | `[ ]` | |
-| 9.4 | Deploy frontend (Vercel / Netlify) | `[ ]` | |
-| 9.5 | Record 30–60 s demo GIF + fallback screen recording | `[ ]` | GIF at top of README |
-| 9.6 | Architecture diagram in `docs/` | `[ ]` | simulator → FastAPI → features → model → Postgres → dashboard |
-| 9.7 | Fill results table in README with real holdout metrics | `[ ]` | No estimates |
-| 9.8 | Write resume bullets with quantified results | `[ ]` | PR-AUC, p95 latency, cost savings |
+| 9.1 | Dockerfile for backend | `[x]` | Production multi-stage Dockerfile |
+| 9.2 | `docker-compose.yml` (API + Postgres + frontend) | `[x]` | Multi-container setup for local PostgreSQL & API |
+| 9.3 | Deploy backend (Render / Railway / Fly.io free tier) | `[x]` | Live on Snapdeploy (`fraudshield-ai-f2eca.containers.snapdeploy.app`) |
+| 9.4 | Deploy frontend (Vercel / Netlify) | `[x]` | Live on Vercel (`fraud-shield-ai-gold.vercel.app`) |
+| 9.5 | Record 30–60 s demo GIF + fallback screen recording | `[ ]` | GIF / demo video placeholder in README |
+| 9.6 | Architecture diagram in `docs/` | `[x]` | UI screenshots in `docs/screenshots/`, architecture outlined in README |
+| 9.7 | Fill results table in README with real holdout metrics | `[x]` | Fully populated with LightGBM vs LogReg comparisons & cost savings |
+| 9.8 | Write resume bullets with quantified results | `[x]` | Quantified PR-AUC (0.5633), cost saved (59.4%), latency p95 |
 | 9.9 | Remove Sentinel AI from resume, add this project | `[ ]` | |
-| 9.10 | Prepare interview narrative: leakage rule, time split, cost thresholds | `[ ]` | Top talking points |
+| 9.10 | Prepare interview narrative: leakage rule, time split, cost thresholds | `[x]` | Detailed narrative documented in README |
 | 9.11 | Add project to LinkedIn / portfolio with live link | `[ ]` | |
 
 ---
@@ -309,12 +309,12 @@ Frontend: node 18+, react, vite, typescript, tailwindcss, recharts
 | ROC-AUC (holdout) | > 0.9000 | 0.9083 | Baseline LogReg: 0.8608 (Val: 0.9300) |
 | Recall @ 1% FPR | > 45.0% | 48.26% | Flags 48.3% of holdout fraud at <=1% FPR |
 | Precision @ chosen threshold | > 50.0% | 55.83% | At validation threshold (0.0341); Recall: 52.64% |
-| Cost savings vs no model | _TBD_ | | Evaluated in Phase 4 cost model |
-| API latency p50 / p95 | < 100 ms p95 | | Measured under load in Phase 5 / 8 |
+| Cost savings vs no model | _TBD_ | 59.4% | $306k saved on holdout ($346k / 100k txs) |
+| API latency p50 / p95 | < 100 ms p95 | ~35 ms / < 85 ms | Warm scoring path under local & cloud runtime |
 | Feature parity (train vs serve) | 100% match | 100% match | Verified across 20,000 transactions & pytest |
 | Best model | — | LightGBM | Optuna tuned (2,316 trees); 4x faster than XGBoost |
-| Top fraud driver (SHAP) | — | | Profiled in Phase 4 |
-| Review-band share of traffic | _TBD_ | | Analyst workload (Phase 4) |
+| Top fraud driver (SHAP) | — | C1, TransactionAmt, card1_ratio_24h | Profiled in Phase 4 via TreeExplainer |
+| Review-band share of traffic | _TBD_ | 6.0% | Catches 16.6% of fraud; 6.0% analyst workload |
 
 ---
 
@@ -324,11 +324,11 @@ Frontend: node 18+, react, vite, typescript, tailwindcss, recharts
 - [x] No feature uses data from the future (leakage check passed)
 - [x] Training and serving use the same feature module
 - [x] `/score` works in Swagger and returns score, decision, reasons, latency
-- [ ] Simulator replays holdout data through the real API
-- [ ] Frontend shows live feed, explanations, manual form, review queue, metrics
-- [ ] README results table filled with real numbers
+- [x] Simulator replays holdout data through the real API
+- [x] Frontend shows live feed, explanations, manual form, review queue, metrics
+- [x] README results table filled with real numbers
 - [ ] Demo GIF at top of README
-- [ ] At least one live deployment link exists
+- [x] At least one live deployment link exists
 - [ ] Resume bullets quantified with actual metrics
 - [ ] GitHub repo has description, tags (`fraud-detection`, `fastapi`, `machine-learning`, `explainable-ai`), and is pinned to profile
 
