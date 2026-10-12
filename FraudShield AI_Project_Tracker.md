@@ -295,7 +295,7 @@ Frontend: node 18+, react, vite, typescript, tailwindcss, recharts
 | 9.6 | Architecture diagram in `docs/` | `[x]` | UI screenshots in `docs/screenshots/`, architecture outlined in README |
 | 9.7 | Fill results table in README with real holdout metrics | `[x]` | Fully populated with LightGBM vs LogReg comparisons & cost savings |
 | 9.8 | Write resume bullets with quantified results | `[x]` | Quantified PR-AUC (0.5633), cost saved (59.4%), latency p95 |
-| 9.9 | Remove Sentinel AI from resume, add this project | `[ ]` | |
+| 9.9 | -x- | `[ ]` | |
 | 9.10 | Prepare interview narrative: leakage rule, time split, cost thresholds | `[x]` | Detailed narrative documented in README |
 | 9.11 | Add project to LinkedIn / portfolio with live link | `[ ]` | |
 
